@@ -1,6 +1,6 @@
 {
   "name": "mosaic-teleport-server",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "main": "src",
   "licenses": [
     {

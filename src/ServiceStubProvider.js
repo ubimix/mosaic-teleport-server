@@ -181,7 +181,7 @@ ServiceStubProvider.handleRequest = function(action) {
 
 ServiceStubProvider.toOptions = function(array) {
     var result = {};
-    var key = undefined;
+    var key;
     for (var i = 0; i < array.length; i++) {
         var val = array[i] + '';
         if (val[0] == '-') {
@@ -194,6 +194,6 @@ ServiceStubProvider.toOptions = function(array) {
         }
     }
     return result;
-}
+};
 
 module.exports = ServiceStubProvider;

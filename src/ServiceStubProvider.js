@@ -19,15 +19,50 @@ var ServiceStubProvider = ApiDispatcher.extend({
         var that = this;
         var init = ApiDispatcher.prototype.initialize;
         init.apply(that, arguments);
-        if (!that.options.path) {
-            throw Mosaic.Errors.newError('Path prefix is not defined.').code(
-                    400);
-        }
         if (!that.options.dir) {
             throw Mosaic.Errors.newError('Root folder is not defined.').code(
                     404);
         }
         that._serviceLoader = new Reloader(require);
+    },
+
+    /**
+     * Cleans up the server stub corresponding to the specified source key
+     */
+    removeEndpoint : function(path) {
+        var that = this;
+        return Mosaic.P.then(function() {
+            var info = that._getServiceFileInfo(path);
+            if (info) {
+                that._serviceLoader.uncache(info.file);
+            }
+            return ApiDispatcher.prototype.removeEndpoint.call(that, path);
+        });
+    },
+
+    /** Registers this stub in an Express application */
+    registerInExpressApp : function(app) {
+        var that = this;
+        var servicePrefix = this.options.path || '';
+        var mask = servicePrefix + '/:service([^]*)';
+        var invalidateMask = mask + '.invalidate';
+        app.get(invalidateMask, ServiceStubProvider.handleRequest(function(req,
+                res) {
+            var path = ServiceStubProvider.getPath(req);
+            return that.removeEndpoint(path).then(function() {
+                return 'OK';
+            });
+        }));
+        app.all(mask, ServiceStubProvider.handleRequest(function(req, res) {
+            var path = ServiceStubProvider.getPath(req);
+            return that.loadEndpoint(path).then(function(handler) {
+                if (!handler) {
+                    throw new Error("Service handler is not defined." + //
+                    "Path: \'" + path + ".");
+                }
+                return handler.handle(req, res);
+            });
+        }));
     },
 
     /** Loads a server-side endpoint used to handle requests */
@@ -55,18 +90,9 @@ var ServiceStubProvider = ApiDispatcher.extend({
         });
     },
 
-    /**
-     * Cleans up the server stub corresponding to the specified source key
-     */
-    removeEndpoint : function(path) {
-        var that = this;
-        return Mosaic.P.then(function() {
-            var info = that._getServiceFileInfo(path);
-            if (info) {
-                that._serviceLoader.uncache(info.file);
-            }
-            return ApiDispatcher.prototype.removeEndpoint.call(that, path);
-        });
+    /** Returns the name of a service file */
+    _getServiceFileName : function() {
+        return this.options.serviceFile || 'service.js';
     },
 
     /**
@@ -84,7 +110,8 @@ var ServiceStubProvider = ApiDispatcher.extend({
         while (!result && array.length) {
             var p = array.join('/');
             var file = Path.join(that.options.dir, p);
-            file = Path.join(file, 'service.js');
+            var serviceFile = this._getServiceFileName();
+            file = Path.join(file, serviceFile);
             if (FS.existsSync(file)) {
                 result = {
                     file : file,
@@ -151,5 +178,22 @@ ServiceStubProvider.handleRequest = function(action) {
         }).done();
     };
 };
+
+ServiceStubProvider.toOptions = function(array) {
+    var result = {};
+    var key = undefined;
+    for (var i = 0; i < array.length; i++) {
+        var val = array[i] + '';
+        if (val[0] == '-') {
+            key = val.substring(1);
+        } else {
+            if (key) {
+                result[key] = val;
+            }
+            key = undefined;
+        }
+    }
+    return result;
+}
 
 module.exports = ServiceStubProvider;

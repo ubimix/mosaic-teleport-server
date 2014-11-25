@@ -1,12 +1,12 @@
 var Mosaic = require('mosaic-commons');
-require('mosaic-teleport');
+var Teleport = require('mosaic-teleport');
 var Reloader = require('./Reloader');
 
 var _ = require('underscore');
 var FS = require('fs');
 var Path = require('path');
 
-var ApiDispatcher = Mosaic.Teleport.ApiDispatcher;
+var ApiDispatcher = Teleport.ApiDispatcher;
 
 /**
  * This class is used to load and manage server-side server stubs automatically
@@ -156,7 +156,7 @@ var ServiceStubProvider = ApiDispatcher.extend({
     }
 });
 
-ServiceStubProvider.getPath = Mosaic.Teleport.ApiDescriptor.HttpServerStub.getPath;
+ServiceStubProvider.getPath = Teleport.ApiDescriptor.HttpServerStub.getPath;
 
 ServiceStubProvider.handleRequest = function(action) {
     return function(req, res) {
